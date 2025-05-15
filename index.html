@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JerryCraft Web - Single File</title>
+    <style>
+        /* CSS from style.css will go here */
+        body { 
+            margin: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background-color: #282c34; /* Slightly more modern dark bg */
+            color: #f0f0f0; /* Light gray text */
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh;
+            font-size: 16px;
+        }
+        .container { 
+            display: flex; 
+            border: 1px solid #444851; 
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        #sidebar { 
+            width: 240px; 
+            background-color: rgb(40,40,55); 
+            padding: 15px; 
+            box-sizing: border-box; 
+            height: 720px; 
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        #sidebar h3, #sidebar h4, #sidebar p { 
+            margin: 8px 0; 
+            color: #e0e0e0;
+        }
+        #sidebar h3 { font-size: 1.2em; }
+        #sidebar h4 { font-size: 1.1em; color: #ffd700; /* Yellow for headings like Inventory */ }
+
+        #sidebar button { 
+            width: calc(100% - 10px); /* Full width minus some padding */
+            padding: 10px; 
+            margin: 8px 5px; 
+            background-color: rgb(80,80,100); 
+            color: rgb(220,220,255); 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: background-color 0.2s ease;
+        }
+        #sidebar button:hover { 
+            background-color: rgb(110,110,130); 
+        }
+        #inventoryList { 
+            list-style: none; 
+            padding: 0; 
+            margin: 5px 0 15px 0;
+        }
+        #inventoryList li {
+            padding: 4px 0;
+            font-size: 0.95em;
+        }
+        #inventoryList li.selected-block {
+            color: #61dafb; /* Highlight color for selected block */
+            font-weight: bold;
+        }
+
+        #gameCanvas { 
+            border-left: 1px solid #444851; 
+            display: block; /* Removes any extra space below canvas */
+        }
+        #instructions { 
+            font-size: 0.85em; 
+            margin-top: auto; /* Pushes instructions to the bottom */
+            padding-top: 15px;
+            border-top: 1px solid #555;
+            color: #b0b0b0;
+        }
+        #instructions p {
+            margin: 4px 0;
+        }
+
+        #splashScreen { 
+            position: fixed; 
+            top:0; 
+            left:0; 
+            width:100%; 
+            height:100%; 
+            background:rgba(0,0,0,0.9); /* Darker, slightly transparent */
+            color:white; 
+            display: flex; 
+            flex-direction:column; 
+            justify-content:center; 
+            align-items:center; 
+            z-index:100;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #splashScreen img {
+            max-width: 90%;
+            max-height: 250px; /* Adjusted max height */
+            margin-bottom: 30px; /* More space */
+            border-radius: 10px; /* Soften edges if logo has them */
+        }
+        #splashScreen h1 {
+            font-size: 3em; /* Larger title */
+            color: #ffd700; /* Yellow */
+            margin-bottom: 20px;
+        }
+        #splashScreen p {
+            font-size: 1.2em; /* Readable story text */
+            line-height: 1.6;
+            margin: 8px 0;
+            max-width: 600px; /* Prevent text from being too wide */
+        }
+        #splashScreen .prompt {
+            font-size: 1.3em;
+            margin-top: 30px;
+            color: #61dafb; /* A bright prompt color */
+            font-weight: bold;
+        }
+        .sidebar-logo {
+            width: 90%; 
+            margin: 5px auto 15px auto; /* More vertical margin */
+            display:block;
+            border-radius: 5px;
+        }
+        .game-over-message {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.75);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 90; /* Below splash, above game */
+            color: white;
+        }
+        .game-over-message h1 { font-size: 3em; color: red; }
+        .game-over-message p { font-size: 1.2em; margin: 10px 0; }
+        .game-over-message button { /* Style restart button for game over screen */
+            padding: 12px 25px;
+            font-size: 1.2em;
+            background-color: rgb(80,80,100); 
+            color: rgb(220,220,255); 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .game-over-message button:hover { background-color: rgb(110,110,130); }
+
+        .transition-message {
+            position: absolute;
+            top: 50%;
+            left: calc(240px + (1280px - 240px) / 2); /* Centered in game area */
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: yellow;
+            padding: 20px 30px;
+            border-radius: 10px;
+            font-size: 1.8em;
+            z-index: 80;
+            text-align: center;
+            box-shadow: 0 0 15px yellow;
+        }
+    </style>
+</head>
+<body>
+    <!-- HTML from index.html will go here -->
+    <div id="splashScreen" style="display: flex;"> <!-- Start with splash visible -->
+        <img id="splashLogoImg" src="JerryCraftLogo.png" alt="JerryCraft Logo">
+        <h1>JerryCraft</h1>
+        <p>Jerry is lost in a strange, blocky world...</p>
+        <p>Every night, terrifying Jeepers emerge from the darkness.</p>
+        <p>Use your limited blocks to build defenses before night falls.</p>
+        <p>Survive the Jeeper onslaught!</p>
+        <p class="prompt">Press any key or click to begin...</p>
+    </div>
+
+    <div class="container">
+        <div id="sidebar">
+            <img id="sidebarLogo" class="sidebar-logo" src="JerryCraftLogo.png" alt="JerryCraft Logo">
+            <button id="pauseButton">Pause</button>
+            
+            <h3 id="phaseText">Phase: Build</h3>
+            <p id="roundText">Round: 1</p>
+            <p id="timerText">Time Left: 60s</p>
+            
+            <h4>Inventory:</h4>
+            <ul id="inventoryList">
+                <!-- JS will populate this -->
+            </ul>
+            
+            <button id="skipButton">Skip to Night</button>
+            
+            <div id="instructions">
+                <p>LMB: Place | RMB: Remove</p>
+                <p>1-5: Select Block</p>
+                <p>ESC: Pause/Resume</p>
+            </div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <div id="gameOverScreen" class="game-over-message" style="display:none;">
+        <h1>GAME OVER</h1>
+        <p id="gameOverSummary1"></p>
+        <p id="gameOverSummary2"></p>
+        <p>Press ESC to try and return to menu (or refresh).</p>
+        <button id="restartButton">Restart Game</button>
+    </div>
+
+    <div id="transitionMessageElement" class="transition-message" style="display:none;">
+        <!-- JS will populate this -->
+    </div>
+
+
+    <script>
+        // JavaScript from game.js will go here
+
+        // --- Constants ---
+        const SCREEN_WIDTH = 1280; // Not directly used for canvas sizing if dynamic, but good for ref
+        const SCREEN_HEIGHT = 720;
+        const SIDEBAR_WIDTH = 240;
+        const GAME_AREA_WIDTH = SCREEN_WIDTH - SIDEBAR_WIDTH;
+        const GAME_AREA_HEIGHT = SCREEN_HEIGHT;
+        const GRID_SIZE = 20;
+        const GRID_WIDTH = GAME_AREA_WIDTH / GRID_SIZE;
+        const GRID_HEIGHT = GAME_AREA_HEIGHT / GRID_SIZE;
+        const FPS = 60; // Target FPS, for calculating dt
+
+        const BUILD_PHASE_DURATION = 60 * 1000;  // 60 seconds
+        const NIGHT_PHASE_DURATION = 60 * 1000; // 60 seconds
+        const CREEPER_BASE_MOVE_DELAY = 600;
+        const CREEPER_PATH_RECALC_INTERVAL = 2000;
+
+        // Colors (using CSS color strings)
+        const BLACK = 'rgb(0,0,0)';
+        const WHITE = 'rgb(255,255,255)';
+        const TEXT_SHADOW_COLOR = 'rgb(50,50,50)'; // For canvas text if needed
+        const RED = 'rgb(255,0,0)';
+        const FOREST_GREEN = 'rgb(34,139,34)';
+        const BLUE = 'rgb(0,0,255)';
+        const YELLOW = 'rgb(255,255,0)';
+        const GRAY = 'rgb(128,128,128)';
+        const BROWN = 'rgb(101,67,33)';
+        const ORANGE_RED = 'rgb(255,69,0)';
+        const DARK_GREEN = 'rgb(0,100,0)';  // Jeeper color
+        const JERRY_COLOR = 'rgb(200,50,50)';
+        const HEALTH_BAR_HIGH = 'rgb(0,200,0)';
+        const HEALTH_BAR_LOW = 'rgb(200,0,0)';
+        const EFFECT_COLOR = 'rgba(200,200,220,0.8)'; // Slightly transparent for effect
+        const NIGHT_OVERLAY_COLOR = 'rgba(50,50,70,0.4)'; // More transparency
+
+        const BLOCK_TYPES = {
+            "grass": {"color": FOREST_GREEN, "solid": false, "travel_cost": 1, "durability": Infinity, "effect": null, "breakable": false},
+            "mud": {"color": BROWN, "solid": true, "travel_cost": 3, "durability": 2, "effect": null, "breakable": true},
+            "stone": {"color": GRAY, "solid": true, "travel_cost": Infinity, "durability": 5, "effect": null, "breakable": true},
+            "water": {"color": BLUE, "solid": false, "travel_cost": 4, "durability": Infinity, "effect": null, "breakable": false},
+            "sand": {"color": YELLOW, "solid": true, "travel_cost": 2, "durability": 1, "effect": null, "breakable": true},
+            "fire": {"color": ORANGE_RED, "solid": true, "travel_cost": 1, "durability": 3, "effect": "burn", "breakable": true}
+        };
+        const SELECTABLE_BLOCKS = ["mud", "stone", "water", "sand", "fire"];
+
+        // --- DOM Elements ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const phaseTextElement = document.getElementById('phaseText');
+        const roundTextElement = document.getElementById('roundText');
+        const timerTextElement = document.getElementById('timerText');
+        const inventoryListElement = document.getElementById('inventoryList');
+        const skipButton = document.getElementById('skipButton');
+        const pauseButton = document.getElementById('pauseButton');
+        const restartButton = document.getElementById('restartButton'); // For game over screen
+        const splashScreenElement = document.getElementById('splashScreen');
+        const gameOverScreenElement = document.getElementById('gameOverScreen');
+        const gameOverSummary1Element = document.getElementById('gameOverSummary1');
+        const gameOverSummary2Element = document.getElementById('gameOverSummary2');
+        const transitionMessageDiv = document.getElementById('transitionMessageElement');
+
+
+        // --- Game State ---
+        let player;
+        let creepers = [];
+        let grid = [];
+        let inventory = {};
+        let currentBlockIndex = 0;
+        let currentBlockType = SELECTABLE_BLOCKS[0];
+        
+        let gamePhase = "build"; // "build" or "night"
+        let roundNumber = 1;
+        let phaseStartTime = 0;
+        let timeLeftInPhase = BUILD_PHASE_DURATION;
+        let totalJeepersSpawned = 0;
+
+        let visualEffects = [];
+
+        let lastTime = 0;
+        let gamePaused = false;
+        let gameRunning = false; // To control the game loop after splash
+        let gameOver = false;
+
+        let transitionMessage = null;
+        let transitionMessageEnd = 0;
+
+        // --- Utility Functions ---
+        function heuristic(a, b) { // a, b are {x, y} objects
+            return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+        }
+
+        // Simple Priority Queue for A*
+        class PriorityQueue {
+            constructor() { this.elements = []; }
+            enqueue(priority, element) { 
+                this.elements.push({ priority, element });
+                this.elements.sort((a, b) => a.priority - b.priority); // Simple sort, not most efficient for large N
+            }
+            dequeue() { return this.elements.shift().element; }
+            isEmpty() { return this.elements.length === 0; }
+        }
+
+        // --- Game Classes ---
+        class Player {
+            constructor(gridX, gridY) {
+                this.gridX = gridX;
+                this.gridY = gridY;
+                this.color = JERRY_COLOR;
+            }
+
+            draw(context) {
+                context.fillStyle = this.color;
+                const centerX = this.gridX * GRID_SIZE + GRID_SIZE / 2;
+                const centerY = this.gridY * GRID_SIZE + GRID_SIZE / 2;
+                const radius = GRID_SIZE / 2 * 0.8; // Make Jerry slightly smaller than cell
+
+                context.beginPath();
+                context.ellipse(centerX, centerY, radius, radius, 0, 0, 2 * Math.PI);
+                context.fill();
+            }
+        }
+
+        class VisualEffect {
+            constructor(gridX, gridY, maxRadius, duration) {
+                this.cx = gridX * GRID_SIZE + GRID_SIZE / 2;
+                this.cy = gridY * GRID_SIZE + GRID_SIZE / 2;
+                this.maxRadius = maxRadius;
+                this.duration = duration;
+                this.startTime = performance.now();
+                this.currentRadius = 0;
+            }
+
+            update() {
+                const now = performance.now();
+                const elapsed = now - this.startTime;
+                if (elapsed >= this.duration) return false;
+                
+                const progress = elapsed / this.duration;
+                // Quadratic easing for a "pop" effect
+                this.currentRadius = this.maxRadius * (4 * progress * (1 - progress)); 
+                return true;
+            }
+
+            draw(context) {
+                if (this.currentRadius > 0) {
+                    context.strokeStyle = EFFECT_COLOR;
+                    context.lineWidth = 2;
+                    context.beginPath();
+                    context.arc(this.cx, this.cy, Math.floor(this.currentRadius), 0, 2 * Math.PI);
+                    context.stroke();
+                    context.lineWidth = 1; // Reset line width
+                }
+            }
+        }
+
+        class Creeper {
+            constructor(x, y, targetPlayer) {
+                this.x = x;
+                this.y = y;
+                this.target = targetPlayer;
+                this.color = DARK_GREEN;
+                this.lastMoveTime = performance.now();
+                this.moveDelay = CREEPER_BASE_MOVE_DELAY + Math.random() * 100 - 50;
+                this.path = [];
+                this.lastPathRecalc = 0;
+            }
+
+            draw(context) {
+                context.fillStyle = this.color;
+                context.fillRect(this.x * GRID_SIZE, this.y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+            }
+
+            findPath(currentGrid) {
+                const start = { x: this.x, y: this.y };
+                const goal = { x: this.target.gridX, y: this.target.gridY };
+                const now = performance.now();
+
+                if (this.path.length > 0 && now - this.lastPathRecalc < CREEPER_PATH_RECALC_INTERVAL) {
+                    return; // Path still fresh enough or exists
+                }
+                this.lastPathRecalc = now;
+
+                const frontier = new PriorityQueue();
+                frontier.enqueue(0, start);
+                const cameFrom = new Map(); // Using Map for object keys {x,y} by stringifying
+                const costSoFar = new Map();
+                
+                cameFrom.set(`${start.x},${start.y}`, null);
+                costSoFar.set(`${start.x},${start.y}`, 0);
+                
+                let pathFound = false;
+
+                while (!frontier.isEmpty()) {
+                    const current = frontier.dequeue();
+
+                    if (current.x === goal.x && current.y === goal.y) {
+                        pathFound = true;
+                        break;
+                    }
+
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            if (dx === 0 && dy === 0) continue;
+
+                            const nextNode = { x: current.x + dx, y: current.y + dy };
+                            const nx = nextNode.x;
+                            const ny = nextNode.y;
+
+                            if (!(nx >= 0 && nx < GRID_WIDTH && ny >= 0 && ny < GRID_HEIGHT)) continue;
+
+                            const cellData = currentGrid[nx][ny];
+                            const blockProps = BLOCK_TYPES[cellData.type];
+                            
+                            let moveCost = blockProps.travel_cost;
+                            if (dx !== 0 && dy !== 0) moveCost *= 1.414; // Diagonal cost
+
+                            // Special handling for reaching goal or impassable blocks
+                            if (blockProps.travel_cost === Infinity && cellData.durability > 0) {
+                                if (nx === goal.x && ny === goal.y) {
+                                    moveCost = 1000; // High cost to attack Jerry through obstacle
+                                } else {
+                                    continue; // Impassable for normal movement
+                                }
+                            } else if (blockProps.travel_cost === Infinity) { // Already destroyed or non-solid infinite cost (like water for some)
+                                continue;
+                            }
+
+
+                            const newCost = costSoFar.get(`${current.x},${current.y}`) + moveCost;
+                            const nextNodeKey = `${nx},${ny}`;
+
+                            if (!costSoFar.has(nextNodeKey) || newCost < costSoFar.get(nextNodeKey)) {
+                                costSoFar.set(nextNodeKey, newCost);
+                                const priority = newCost + heuristic(goal, nextNode);
+                                frontier.enqueue(priority, nextNode);
+                                cameFrom.set(nextNodeKey, current);
+                            }
+                        }
+                    }
+                }
+                
+                this.path = [];
+                if (pathFound) {
+                    let curr = goal;
+                    while (curr.x !== start.x || curr.y !== start.y) {
+                        this.path.push(curr);
+                        const pred = cameFrom.get(`${curr.x},${curr.y}`);
+                        if (!pred) { this.path = []; break; } // Should not happen if pathFound is true
+                        curr = pred;
+                    }
+                    this.path.reverse();
+                }
+                 if (!this.path.length && (start.x !== goal.x || start.y !== goal.y)) {
+                    // console.log("Creeper at", start.x, start.y, "could not find path to Jerry at", goal.x, goal.y);
+                }
+            }
+
+            move(currentGrid) {
+                const now = performance.now();
+                if (now - this.lastMoveTime < this.moveDelay) return null;
+
+                if (!this.path || this.path.length === 0) {
+                    this.findPath(currentGrid);
+                    if (!this.path || this.path.length === 0) {
+                        this.lastMoveTime = now;
+                        return null; // No path, can't move
+                    }
+                }
+                
+                const nextPos = this.path[0];
+                const nextX = nextPos.x;
+                const nextY = nextPos.y;
+                const targetCell = currentGrid[nextX][nextY];
+                const blockProps = BLOCK_TYPES[targetCell.type];
+
+                this.lastMoveTime = now;
+
+                if (nextX === this.target.gridX && nextY === this.target.gridY) {
+                    this.x = nextX; this.y = nextY;
+                    if (this.path.length > 0) this.path.shift();
+                    return "reached_jerry";
+                }
+
+                if (blockProps.effect === "burn" && targetCell.durability > 0) {
+                     if (blockProps.breakable) {
+                        currentGrid[nextX][nextY].durability -= 1;
+                        if (currentGrid[nextX][nextY].durability <= 0) {
+                            currentGrid[nextX][nextY] = { type: "grass", durability: Infinity };
+                            // Path invalidation will be handled by block change generally
+                        }
+                    }
+                    // Creeper doesn't move into fire, just damages it
+                    return "burned"; 
+                }
+                
+                const isCurrentlyImpassable = blockProps.travel_cost === Infinity && targetCell.durability > 0;
+                if (isCurrentlyImpassable) {
+                    if (blockProps.breakable) {
+                        currentGrid[nextX][nextY].durability -= 1;
+                        if (currentGrid[nextX][nextY].durability <= 0) {
+                            currentGrid[nextX][nextY] = { type: "grass", durability: Infinity };
+                            this.path = []; // Force recalc
+                            this.lastPathRecalc = 0;
+                        }
+                    }
+                    return null; // Blocked by obstacle
+                } else {
+                    this.x = nextX;
+                    this.y = nextY;
+                    this.moveDelay = CREEPER_BASE_MOVE_DELAY * blockProps.travel_cost * (Math.random() * 0.4 + 0.8); // Add some variance
+                    if (this.path.length > 0) this.path.shift();
+                    return "moved";
+                }
+            }
+        }
+
+        // --- Game Management Functions ---
+        function resetGame() {
+            player = new Player(Math.floor(GRID_WIDTH / 2), Math.floor(GRID_HEIGHT / 2));
+            initializeGrid();
+            inventory = initialInventory();
+            currentBlockIndex = 0;
+            currentBlockType = SELECTABLE_BLOCKS[currentBlockIndex];
+            
+            gamePhase = "build";
+            roundNumber = 1;
+            phaseStartTime = performance.now();
+            timeLeftInPhase = BUILD_PHASE_DURATION;
+            totalJeepersSpawned = 0;
+
+            creepers = [];
+            visualEffects = [];
+            
+            gamePaused = false;
+            gameOver = false;
+            gameOverScreenElement.style.display = 'none';
+            skipButton.style.display = 'block'; // Show skip button
+
+            updateUI(); // Refresh UI
+            
+            if (!gameRunning) { // If game loop wasn't running (e.g., first start after splash)
+                gameRunning = true;
+                lastTime = performance.now();
+                requestAnimationFrame(gameLoop);
+            } else { // If restarting, ensure loop continues if it was paused by game over
+                 lastTime = performance.now(); // Reset delta time calculation
+            }
+        }
+
+        function initializeGrid() {
+            grid = [];
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                grid[x] = [];
+                for (let y = 0; y < GRID_HEIGHT; y++) {
+                    grid[x][y] = { type: "grass", durability: Infinity };
+                }
+            }
+            if (player) { // Ensure player's spot is clear
+                grid[player.gridX][player.gridY] = { type: "grass", durability: Infinity };
+            }
+        }
+
+        function initialInventory() {
+            return {"mud": 20, "stone": 10, "water": 5, "sand": 15, "fire": 3};
+        }
+        
+        function rewardInventory() {
+            inventory["mud"] += 5 + roundNumber;
+            inventory["stone"] += 3 + roundNumber;
+            inventory["water"] += 1 + Math.floor(roundNumber / 2);
+            inventory["sand"] += 4 + roundNumber;
+            inventory["fire"] += 2 + Math.floor(roundNumber / 3); // Adjusted fire reward slightly
+        }
+
+        function rewardInventoryBonus() {
+            inventory["mud"] += 7 + roundNumber; // Slightly better bonus
+            inventory["stone"] += 4 + roundNumber;
+            inventory["water"] += 2 + Math.floor(roundNumber / 2);
+            inventory["sand"] += 6 + roundNumber;
+            inventory["fire"] += 3; // Bonus fire
+        }
+
+        function spawnCreepers() {
+            creepers = [];
+            const count = 3 + roundNumber * 2;
+            totalJeepersSpawned += count;
+
+            for (let i = 0; i < count; i++) {
+                let x, y;
+                const edge = Math.floor(Math.random() * 4);
+                switch (edge) {
+                    case 0: x = Math.floor(Math.random() * GRID_WIDTH); y = 0; break; // Top
+                    case 1: x = Math.floor(Math.random() * GRID_WIDTH); y = GRID_HEIGHT - 1; break; // Bottom
+                    case 2: x = 0; y = Math.floor(Math.random() * GRID_HEIGHT); break; // Left
+                    case 3: x = GRID_WIDTH - 1; y = Math.floor(Math.random() * GRID_HEIGHT); break; // Right
+                }
+
+                if (x === player.gridX && y === player.gridY) { // Don't spawn on Jerry
+                    y = (y + 1) % GRID_HEIGHT; 
+                }
+                // Check if spawn point is on an undestroyable obstacle (rare but possible if map gen changes)
+                if (grid[x] && grid[x][y] && BLOCK_TYPES[grid[x][y].type].travel_cost === Infinity && grid[x][y].durability === Infinity) {
+                    i--; // try spawning this creeper again
+                    continue;
+                }
+                creepers.push(new Creeper(x, y, player));
+            }
+        }
+        
+        function invalidateNearbyCreeperPaths(gridX, gridY, radius) {
+            const radiusSq = radius * radius;
+            creepers.forEach(creeper => {
+                const distSq = (creeper.x - gridX)**2 + (creeper.y - gridY)**2;
+                if (distSq < radiusSq) {
+                    creeper.path = [];
+                    creeper.lastPathRecalc = 0; // Force recalc on next move attempt
+                }
+            });
+        }
+
+        function placeBlock(gridX, gridY) {
+            if (!(gridX >= 0 && gridX < GRID_WIDTH && gridY >= 0 && gridY < GRID_HEIGHT)) return;
+            if (gridX === player.gridX && gridY === player.gridY) return; // Can't build on Jerry
+
+            const blockToPlace = currentBlockType;
+            if (inventory[blockToPlace] > 0) {
+                const oldBlockType = grid[gridX][gridY].type;
+                const blockProps = BLOCK_TYPES[blockToPlace];
+                
+                grid[gridX][gridY] = { type: blockToPlace, durability: blockProps.durability };
+                inventory[blockToPlace]--;
+                visualEffects.push(new VisualEffect(gridX, gridY, GRID_SIZE / 1.5, 300));
+                updateUI();
+
+                // If the new block is an obstacle or changes pathing significantly
+                if (blockProps.solid || blockProps.travel_cost > BLOCK_TYPES[oldBlockType].travel_cost) {
+                     invalidateNearbyCreeperPaths(gridX, gridY, 5); // Radius of 5 cells
+                }
+            }
+        }
+
+        function removeBlock(gridX, gridY) {
+            if (!(gridX >= 0 && gridX < GRID_WIDTH && gridY >= 0 && gridY < GRID_HEIGHT)) return;
+            if (gridX === player.gridX && gridY === player.gridY) return; // Can't remove under Jerry
+
+            const currentCell = grid[gridX][gridY];
+            if (currentCell.type !== "grass") { // Only remove non-grass blocks
+                const removedBlockProps = BLOCK_TYPES[currentCell.type];
+                // Optionally refund some resources, or not. For now, no refund.
+                // inventory[currentCell.type] = (inventory[currentCell.type] || 0) + 1; // Example refund
+                
+                grid[gridX][gridY] = { type: "grass", durability: Infinity };
+                visualEffects.push(new VisualEffect(gridX, gridY, GRID_SIZE / 2, 250));
+                updateUI();
+
+                if (removedBlockProps.solid || removedBlockProps.travel_cost === Infinity) {
+                    invalidateNearbyCreeperPaths(gridX, gridY, 5);
+                }
+            }
+        }
+
+
+        // --- Event Handlers ---
+        function handleCanvasMouseDown(event) {
+            if (gameOver || gamePaused || gamePhase !== "build") return;
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            const gridX = Math.floor(mouseX / GRID_SIZE);
+            const gridY = Math.floor(mouseY / GRID_SIZE);
+
+            if (event.button === 0) { // Left click
+                placeBlock(gridX, gridY);
+            } else if (event.button === 2) { // Right click
+                removeBlock(gridX, gridY);
+            }
+        }
+        
+        function handleKeyDown(event) {
+            if (event.key === 'Escape') {
+                if (!gameOver) { // Don't allow pause toggle if game is over, only restart
+                    togglePause();
+                }
+            }
+            if (gamePaused || gameOver) return;
+
+            if (gamePhase === "build") {
+                if (event.key >= '1' && event.key <= String(SELECTABLE_BLOCKS.length)) {
+                    const index = parseInt(event.key) - 1;
+                    if (index < SELECTABLE_BLOCKS.length) {
+                        currentBlockIndex = index;
+                        currentBlockType = SELECTABLE_BLOCKS[currentBlockIndex];
+                        updateUI(); // To show selection change
+                    }
+                }
+            }
+        }
+        
+        function togglePause() {
+            if (gameOver) return; // Can't pause if game over
+            gamePaused = !gamePaused;
+            pauseButton.textContent = gamePaused ? "Resume" : "Pause";
+            if (!gamePaused) { // Resuming
+                lastTime = performance.now(); // Prevent large dt jump
+                requestAnimationFrame(gameLoop); // Ensure loop continues if it was stopped by pause
+            }
+        }
+
+        // --- Update Function ---
+        function update(dt) { // dt is delta time, not used yet but good practice
+            if (gameOver || gamePaused || !gameRunning) return;
+
+            const now = performance.now();
+            
+            // Phase Timer
+            if (timeLeftInPhase > 0) {
+                timeLeftInPhase = Math.max(0, (gamePhase === "build" ? BUILD_PHASE_DURATION : NIGHT_PHASE_DURATION) - (now - phaseStartTime));
+            }
+
+            // Phase Transitions
+            if (gamePhase === "build" && timeLeftInPhase <= 0) {
+                gamePhase = "night";
+                phaseStartTime = now;
+                timeLeftInPhase = NIGHT_PHASE_DURATION;
+                spawnCreepers();
+                skipButton.style.display = 'none';
+            } else if (gamePhase === "night" && timeLeftInPhase <= 0) {
+                if (!gameOver) { // Survived the night
+                    gamePhase = "build";
+                    roundNumber++;
+                    phaseStartTime = now;
+                    timeLeftInPhase = BUILD_PHASE_DURATION;
+                    creepers = [];
+                    rewardInventory();
+                    skipButton.style.display = 'block';
+                    showTransitionMessage(`Round ${roundNumber} - Prepare your defenses!`);
+                }
+            }
+            
+            // Early night end if all creepers defeated
+            if (gamePhase === "night" && !gameOver && creepers.length === 0 && totalJeepersSpawned > 0) {
+                 // Check totalJeepersSpawned to ensure it's not the very start of the night phase before any spawned
+                const jeepersForThisRound = 3 + (roundNumber-1) * 2; // Estimate how many *should* have spawned
+                if (totalJeepersSpawned >= jeepersForThisRound ) { // Ensure it's not just that they haven't spawned yet
+                    gamePhase = "build";
+                    roundNumber++;
+                    phaseStartTime = now;
+                    timeLeftInPhase = BUILD_PHASE_DURATION;
+                    rewardInventoryBonus(); // Bonus for clearing them out
+                    skipButton.style.display = 'block';
+                    showTransitionMessage(`All Jeepers defeated! Bonus! Starting Round ${roundNumber}.`);
+                }
+            }
+
+
+            // Update Creepers (Night Phase)
+            if (gamePhase === "night" && !gameOver) {
+                let remainingCreepers = [];
+                for (let i = creepers.length - 1; i >= 0; i--) {
+                    const creeper = creepers[i];
+                    const result = creeper.move(grid);
+                    if (result === "reached_jerry") {
+                        gameOver = true;
+                        displayGameOver();
+                        break; 
+                    } else if (result === "burned") {
+                        visualEffects.push(new VisualEffect(creeper.x, creeper.y, GRID_SIZE / 1.8, 350));
+                        // Creeper stays, block is burning
+                        remainingCreepers.push(creeper);
+                    } else {
+                         remainingCreepers.push(creeper);
+                    }
+                }
+                 if (!gameOver) creepers = remainingCreepers.reverse(); // Keep original order if possible
+            }
+
+            // Update Visual Effects
+            visualEffects = visualEffects.filter(effect => effect.update());
+
+            // Update transition message display
+            if (transitionMessage && now > transitionMessageEnd) {
+                transitionMessageDiv.style.display = 'none';
+                transitionMessage = null;
+            }
+            updateUI();
+        }
+        
+        function showTransitionMessage(message) {
+            transitionMessage = message;
+            transitionMessageEnd = performance.now() + 3000; // Show for 3 seconds
+            transitionMessageDiv.textContent = message;
+            transitionMessageDiv.style.display = 'block';
+        }
+
+        function displayGameOver() {
+            gameOverScreenElement.style.display = 'flex';
+            gameOverSummary1Element.textContent = `You survived ${Math.max(0, roundNumber - 1)} night(s).`;
+            gameOverSummary2Element.textContent = `Total Jeepers Spawned: ${totalJeepersSpawned}.`;
+            skipButton.style.display = 'none'; // Hide skip button on game over
+        }
+
+        // --- Drawing Functions ---
+        function drawGridAndObjects() {
+            // Clear game area (canvas part)
+            ctx.fillStyle = BLACK;
+            ctx.fillRect(0, 0, GAME_AREA_WIDTH, GAME_AREA_HEIGHT);
+
+            // Draw grid
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                for (let y = 0; y < GRID_HEIGHT; y++) {
+                    const cell = grid[x][y];
+                    const blockProps = BLOCK_TYPES[cell.type];
+                    ctx.fillStyle = blockProps.color;
+                    ctx.fillRect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+
+                    // Draw health bar for breakable blocks not at full health
+                    if (blockProps.breakable && cell.durability > 0 && cell.durability < blockProps.durability) {
+                        const healthRatio = cell.durability / blockProps.durability;
+                        const barWidth = GRID_SIZE * 0.8 * healthRatio;
+                        const barHeight = Math.max(2, GRID_SIZE / 8);
+                        const barX = x * GRID_SIZE + (GRID_SIZE * 0.1);
+                        const barY = (y + 1) * GRID_SIZE - barHeight - 2;
+                        
+                        // Interpolate color from HEALTH_BAR_LOW to HEALTH_BAR_HIGH
+                        const r = Math.floor(parseInt(HEALTH_BAR_LOW.slice(4,7)) * (1 - healthRatio) + parseInt(HEALTH_BAR_HIGH.slice(4,7)) * healthRatio);
+                        const g = Math.floor(parseInt(HEALTH_BAR_LOW.slice(8,11)) * (1 - healthRatio) + parseInt(HEALTH_BAR_HIGH.slice(8,11)) * healthRatio);
+                        const b = Math.floor(parseInt(HEALTH_BAR_LOW.slice(12,15)) * (1 - healthRatio) + parseInt(HEALTH_BAR_HIGH.slice(12,15)) * healthRatio);
+                        ctx.fillStyle = `rgb(${r},${g},${b})`;
+                        ctx.fillRect(barX, barY, barWidth, barHeight);
+                    }
+                    // Grid lines
+                    ctx.strokeStyle = 'rgba(0,0,0,0.2)'; // Subtle grid lines
+                    ctx.strokeRect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+                }
+            }
+
+            // Draw player
+            if(player) player.draw(ctx);
+
+            // Draw creepers
+            if (gamePhase === "night" || gameOver) { // Show creepers during night or if game ended during night
+                creepers.forEach(creeper => creeper.draw(ctx));
+            }
+            
+            // Draw visual effects
+            visualEffects.forEach(effect => effect.draw(ctx));
+
+            // Night overlay
+            if (gamePhase === "night" && !gameOver) {
+                ctx.fillStyle = NIGHT_OVERLAY_COLOR;
+                ctx.fillRect(0, 0, GAME_AREA_WIDTH, GAME_AREA_HEIGHT);
+            }
+        }
+        
+        function updateUI() {
+            phaseTextElement.textContent = `Phase: ${gamePhase.charAt(0).toUpperCase() + gamePhase.slice(1)}`;
+            roundTextElement.textContent = `Round: ${roundNumber}`;
+            timerTextElement.textContent = `Time Left: ${Math.ceil(timeLeftInPhase / 1000)}s`;
+
+            inventoryListElement.innerHTML = ''; // Clear old list
+            SELECTABLE_BLOCKS.forEach((blockName, index) => {
+                const li = document.createElement('li');
+                const count = inventory[blockName] || 0;
+                li.textContent = `[${index + 1}] ${blockName.charAt(0).toUpperCase() + blockName.slice(1)}: ${count}`;
+                if (index === currentBlockIndex) {
+                    li.classList.add('selected-block'); // For CSS styling
+                }
+                inventoryListElement.appendChild(li);
+            });
+        }
+
+        // --- Game Loop ---
+        function gameLoop(timestamp) {
+            if (!gameRunning) return; // Loop should not run if game isn't active (e.g. splash)
+            if (gameOver && !gamePaused) { // If game over, effectively pause the logic updates but keep drawing if needed
+                // We might want to stop the loop entirely or switch to a specific game over loop
+                // For now, this just stops updates. Draw will still happen once more.
+                 drawGridAndObjects(); // Final draw
+                 return; 
+            }
+            if (gamePaused) {
+                 requestAnimationFrame(gameLoop); // Keep checking if unpaused
+                 return;
+            }
+
+
+            if (!lastTime) lastTime = timestamp;
+            const deltaTime = (timestamp - lastTime) / 1000; // Delta time in seconds
+            lastTime = timestamp;
+
+            update(deltaTime); // Pass deltaTime if your physics/movement needs it
+            drawGridAndObjects();
+            // UI updated within update() or as needed
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+
+        // --- Initialization and Startup ---
+        function startGame() {
+            splashScreenElement.style.display = 'none';
+            
+            // Setup canvas dimensions
+            canvas.width = GAME_AREA_WIDTH;
+            canvas.height = GAME_AREA_HEIGHT;
+
+            resetGame(); // This sets up the initial game state and starts the loop if not running
+        }
+
+        // Event Listeners Setup
+        canvas.addEventListener('mousedown', handleCanvasMouseDown);
+        canvas.addEventListener('contextmenu', event => event.preventDefault()); // Prevent right-click menu on canvas
+        window.addEventListener('keydown', handleKeyDown);
+        
+        pauseButton.addEventListener('click', togglePause);
+        skipButton.addEventListener('click', () => {
+            if (gamePhase === "build" && !gameOver && !gamePaused) {
+                timeLeftInPhase = 0; // Instantly skip to night
+            }
+        });
+        restartButton.addEventListener('click', () => {
+            gameOverScreenElement.style.display = 'none'; // Hide game over screen
+            resetGame(); // Reset and restart the game logic
+        });
+        
+        // Splash screen interaction
+        function initialSplashScreenHandler() {
+            startGame();
+            // Remove these listeners after first use
+            document.removeEventListener('click', initialSplashScreenHandler);
+            document.removeEventListener('keydown', initialSplashScreenHandler);
+        }
+        document.addEventListener('click', initialSplashScreenHandler);
+        document.addEventListener('keydown', initialSplashScreenHandler);
+
+        // Note: `window.onload` is not strictly necessary here since the script is at the end of the body,
+        // but it's good practice if you were to move the script to the <head> with 'defer'.
+        // For now, the splash screen handlers effectively become the entry point after DOM load.
+
+    </script>
+</body>
+</html>
